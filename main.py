@@ -1,15 +1,26 @@
-from enc import Person, CURVE
+import hashlib
+
+from src.person import CURVE, Person
+from src.sig import HASH_F, Sign
 
 Alice = Person(name="Alice")
 Bob = Person(name="Bob")
-users = [Alice,Bob]
+users = [Alice, Bob]
+
+for u in users:
+    u.signer = Sign(None, None, None)
+    u.signed_text = None
+
+
+def message_hash(text: str) -> int:
+    return int.from_bytes(HASH_F(text.encode()).digest(), "big") % CURVE.field.n
+
 
 def find_user(user: str) -> Person | None:
     for u in users:
         if u.name.lower() == user.strip().lower():
             return u
     return None
-
 
 
 def menu_generate_keys() -> None:
@@ -39,6 +50,7 @@ def menu_compute_sh() -> None:
     print(f"  Секретная точка: ({Alice.sc_k_ECC.x}, {Alice.sc_k_ECC.y})")
     print(f"  AES-ключ: {Alice.k_AES}")
 
+
 def menu_show_keys() -> None:
     print("\n[Текущие ключи]")
     for u in users:
@@ -51,6 +63,7 @@ def menu_show_keys() -> None:
         if u.sc_k_ECC is not None:
             print(f"  ({Alice.sc_k_ECC.x}, {Alice.sc_k_ECC.y})")
         print(f"  AES-ключ: {Alice.k_AES}")
+
 
 def menu_encrypt() -> None:
     print("\n[Зашифровать сообщение]")
@@ -92,6 +105,74 @@ def menu_decrypt() -> None:
     print(f"  {plain}")
 
 
+####################################################################################
+# лаб 3
+
+
+def menu_sig_keygen() -> None:
+    print("\n[Генерация ключей подписи (ЭЦП)]")
+    name = input("Имя пользователя: ")
+    user = find_user(name)
+    if user is None:
+        print(f"Ошибка! Пользователь '{name}' не найден")
+        return
+    user.signer.keygen()
+    print(f"[{user.name}] приватный ключ подписи: {user.signer.d}")
+    print(
+        f"[{user.name}] публичный ключ подписи: ({user.signer.pub.x}, {user.signer.pub.y})"
+    )
+
+
+def menu_sign_message() -> None:
+    print("\n[Подписать сообщение]")
+    name = input("Кто подписывает (Alice/Bob): ")
+    user = find_user(name)
+    if user is None:
+        print(f"Ошибка! Пользователь '{name}' не найден")
+        return
+    if user.signer.d is None:
+        print(f"Ошибка! У {user.name} нет ключей подписи (сначала пункт 6)")
+        return
+
+    text = input("Сообщение: ")
+    sig = user.signer.make_sig(message_hash(text))
+    user.signed_text = text
+
+    print("Сообщение подписано:")
+    print(f"  r = {sig.r}")
+    print(f"  s = {sig.s}")
+
+
+def menu_verify_signature() -> None:
+    print("\n[Проверить подпись]")
+    name = input("Чью подпись проверяем (Alice/Bob): ")
+    user = find_user(name)
+    if user is None:
+        print(f"Ошибка! Пользователь '{name}' не найден")
+        return
+    if user.signer.pub is None:
+        print(f"Ошибка! У {user.name} нет публичного ключа подписи (сначала пункт 6)")
+        return
+    if user.signer.r is None or user.signed_text is None:
+        print(f"Ошибка! {user.name} ещё ничего не подписывал (пункт 7)")
+        return
+
+    text = (
+        input(f"Сообщение (Enter - «{user.signed_text}»): ").strip() or user.signed_text
+    )
+    r_raw = input(f"r (Enter - {user.signer.r}): ").strip()
+    s_raw = input(f"s (Enter - {user.signer.s}): ").strip()
+    try:
+        r = int(r_raw) if r_raw else user.signer.r
+        s = int(s_raw) if s_raw else user.signer.s
+    except ValueError:
+        print("Ошибка! r и s должны быть целыми числами")
+        return
+
+    ok = user.signer.verify(message_hash(text), r=r, s=s)
+    print("Подпись ВЕРНА" if ok else "Подпись НЕВЕРНА")
+
+
 def print_menu():
     print("\n" + "=" * 46)
     print(f"  Кривая: {CURVE.name}")
@@ -101,6 +182,11 @@ def print_menu():
     print("  3. Показать текущие ключи")
     print("  4. Зашифровать сообщение")
     print("  5. Расшифровать сообщение")
+    #######################################
+    # лаб 3 пункты меню
+    print("  6. Сгенерировать ключи подписи (ЭЦП)")
+    print("  7. Подписать сообщение")
+    print("  8. Проверить подпись")
     print("  0. Выход")
     print("=" * 46)
 
@@ -120,10 +206,22 @@ def main():
             menu_encrypt()
         elif choice == "5":
             menu_decrypt()
+        ############################################
+        #
+        # ЛАБ 3 меню
+        #
+        #
+        elif choice == "6":
+            menu_sig_keygen()
+        elif choice == "7":
+            menu_sign_message()
+        elif choice == "8":
+            menu_verify_signature()
         elif choice == "0":
             print("Выход.")
             break
         else:
             print("Неверный пункт меню. Попробуйте снова.")
+
 
 main()

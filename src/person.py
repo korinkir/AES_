@@ -6,20 +6,30 @@ import tinyec.registry as reg
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-
 """
 надо пропатчить tinyec,
 
 """
 
 
-
-
-
 CURVE = reg.get_curve("secp256k1")
 
+
 class Person:
-    def __init__(self, p_k_ECC = None, G_point = None, mod = None, pub_k_ECC = None, sc_k_ECC = None, k_AES = None, message = "", crypt_message = None, name = "user"):
+    def __init__(
+        self,
+        p_k_ECC=None,
+        G_point=None,
+        mod=None,
+        pub_k_ECC=None,
+        sc_k_ECC=None,
+        k_AES=None,
+        message="",
+        crypt_message=None,
+        name="user",
+        signer=None,
+        signed_text=None,
+    ):
         self.p_k_ECC = p_k_ECC
         self.G_point = G_point
         self.mod = mod
@@ -29,6 +39,8 @@ class Person:
         self.message = message
         self.crypt_message = crypt_message
         self.name = name
+        self.signer = signer
+        self.signed_text = signed_text
 
     def key_gens(self):
         self.G_point = CURVE.g
