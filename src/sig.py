@@ -7,16 +7,26 @@ from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 
-"""
-надо пропатчить tinyec,
-
-"""
-
-
-
-
 
 CURVE = reg.get_curve("secp256k1")
+HASH_F = hashlib.sha3_256()
+
+class Sign:
+    def __init__(self, r, s, d):
+        self.r = r
+        self.s = s
+        self.d = d
+
+    def make_sig(self, hash):
+        self.d = secrets.randbelow(CURVE.field.n - 1) + 1
+        k = secrets.randbelow(CURVE.field.n - 1) + 1
+        g = CURVE.g
+        R = k*g
+        self.r = R.x
+        inverse_k = pow(k,-1,CURVE.field.n)
+        self.s = inverse_k*(hash + self.r*self.d)
+
+
 
 class Person:
     def __init__(self, p_k_ECC = None, G_point = None, mod = None, pub_k_ECC = None, sc_k_ECC = None, k_AES = None, message = "", crypt_message = None, name = "user"):
